@@ -338,7 +338,7 @@ class HipScud(QtGui.QMainWindow):
                 exists = True
                 break
         if not exists:
-            pass#self.addWrapper(url)
+            self.addWrapper(url)
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.ActivationChange and self.isActiveWindow():
