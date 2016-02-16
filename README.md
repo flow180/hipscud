@@ -1,6 +1,6 @@
 # HipScud - Linux Client app for HipChat
 
-HipScud is a **non official** open-source Linux (Debian, Ubuntu, Kubuntu, Mint, Arch, Fedora) desktop client app for [HipChat](http://hipchat.com).
+HipScud is a **non official** open-source Linux (Debian, Ubuntu, Kubuntu, Mint, Arch, Fedora) desktop client app for [HipChat](http://hipchat.com) based on [ScudCloud for Slack](https://github.com/raelgc/scudcloud).
 
 HipScud improves the HipChat integration with Linux desktops featuring:
 
