@@ -108,6 +108,7 @@ class Wrapper(QWebView):
         url = self._urlToString(qUrl)
         if Resources.HOMEPAGE_URL_RE.match(url):
             self.load(QUrl("https://"+qUrl.host()+"/chat"))
+        if self.window.debug: print("URL Changed: {}".format(url))
 
     @staticmethod
     def _urlToString(url):
@@ -128,6 +129,7 @@ class Wrapper(QWebView):
 
     def _linkClicked(self, qUrl):
         url = self._urlToString(qUrl)
+        if self.window.debug: print("Link Clicked: {}".format(url))
         if Resources.SIGNIN_URL == url or Resources.HOMEPAGE_URL_RE.match(url) or Resources.CHAT_PAGE_RE.match(url):
             self.window.switchTo(url)
         else:
@@ -189,7 +191,4 @@ class Wrapper(QWebView):
 
     @QtCore.pyqtSlot(str, str)
     def sendMessage(self, title, message):
-        erase = ['['+self.name.lower()+'] in ', '['+self.name.lower()+'] from ']
-        for s in erase:
-            title = str(title).replace(s, '', 1)
         self.window.notify(title, str(message), self.icon)
