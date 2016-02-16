@@ -1,4 +1,4 @@
-from scudcloud.resources import Resources
+from hipscud.resources import Resources
 
 import os
 from PyQt4 import QtGui

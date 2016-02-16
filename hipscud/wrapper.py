@@ -1,4 +1,4 @@
-from scudcloud.resources import Resources
+from hipscud.resources import Resources
 
 import sys, subprocess, os, json, tempfile
 from urllib import request
@@ -18,12 +18,13 @@ class Wrapper(QWebView):
     id = 0
     icon = None
     name = ''
+    hipchatLoaded = QtCore.pyqtSignal()
 
     def __init__(self, window):
         self.configure_proxy()
         QWebView.__init__(self)
         self.window = window
-        with open(Resources.get_path("scudcloud.js"), "r") as f:
+        with open(Resources.get_path("hipscud.js"), "r") as f:
             self.js = f.read()
         self.setZoomFactor(self.window.zoom)
         self.page().setLinkDelegationPolicy(QtWebKit.QWebPage.DelegateAllLinks)
@@ -76,7 +77,6 @@ class Wrapper(QWebView):
                     menu.addAction(action)
                 elif a.text() in entriesToHide:
                     continue
-                # Let's skip Slack redirect engine only when copying the link (Fixes #42)
                 elif 'Copy Link' == a.text() and not url.isEmpty():
                     action = QtGui.QAction('Copy Link', self)
                     action.triggered.connect(lambda: self.decodeAndCopy(
@@ -90,30 +90,24 @@ class Wrapper(QWebView):
         menu.exec_(event.globalPos())
 
     def decodeAndCopy(self, url):
-        if url.startswith("https://slack-redir.net/link?url="):
-            url_param = parse_qs(urlsplit(url).query).get('url')
-            decodedURL = url_param[0] if url_param else url
-        else:
-            decodedURL = url
-        QApplication.clipboard().setText(decodedURL)
+        QApplication.clipboard().setText(url)
 
     def call(self, function, arg=None):
         if isinstance(arg, str):
             arg = "'"+arg+"'"
         if arg is None:
             arg = ""
-        return self.page().currentFrame().evaluateJavaScript("ScudCloud."+function+"("+arg+");")
+        return self.page().currentFrame().evaluateJavaScript("HipScud."+function+"("+arg+");")
 
     def _loadStarted(self):
         # Some custom CSS to clean/fix UX
         self.settings().setUserStyleSheetUrl(QUrl.fromLocalFile(Resources.get_path("resources.css")))
+        self.page().currentFrame().evaluateJavaScript("window.Notification=function(){};Notification.permission='granted'");
 
     def _urlChanged(self, qUrl):
         url = self._urlToString(qUrl)
-        # Some integrations/auth will get back to /services with no way to get back to chat
-        if Resources.SERVICES_URL_RE.match(url):
-            self.systemOpen(url)
-            self.load(QUrl("https://"+qUrl.host()+"/messages/general"))
+        if Resources.HOMEPAGE_URL_RE.match(url):
+            self.load(QUrl("https://"+qUrl.host()+"/chat"))
 
     @staticmethod
     def _urlToString(url):
@@ -132,58 +126,43 @@ class Wrapper(QWebView):
 
     def _linkClicked(self, qUrl):
         url = self._urlToString(qUrl)
-        if Resources.SIGNIN_URL == url or Resources.MAINPAGE_URL_RE.match(url):
+        if Resources.SIGNIN_URL == url or Resources.HOMEPAGE_URL_RE.match(url) or Resources.CHAT_PAGE_RE.match(url):
             self.window.switchTo(url)
-        elif Resources.MESSAGES_URL_RE.match(url) or Resources.SSO_URL_RE.match(url) or Resources.GOOGLE_OAUTH2_URL_RE.match(url):
-            self.load(qUrl)
         else:
             self.systemOpen(url)
-
-    def sendTickle(self):
-        self.call("sendTickle")
 
     def preferences(self):
         self.window.show()
         self.call("preferences")
 
-    def createSnippet(self):
-        self.call("createSnippet")
-
-    def team(self):
-        return self.call("getCurrentTeam")
+    def sendTickle(self):
+        pass
 
     def logout(self):
         self.call("logout")
 
-    def help(self):
-        self.call("help")
-
     def helpCenter(self):
-        subprocess.call(('xdg-open', "https://slack.zendesk.com/hc/en-us"))
+        subprocess.call(('xdg-open', "https://confluence.atlassian.com/hipchat/hipchat-documentation-740262341.html"))
 
     def about(self):
-        subprocess.call(('xdg-open', "https://github.com/raelgc/scudcloud"))
+        subprocess.call(('xdg-open', "https://github.com/flow180/hipscud"))
 
     def listChannels(self):
         return self.call("listChannels")
 
     def openChannel(self, menuitem, timestamp):
-        self.call("join", menuitem.property_get("id"))
+        self.call("open", menuitem.property_get("id"))
         self.window.show()
 
-    @QtCore.pyqtSlot(int, int)
-    def count(self, highlight, unread):
-        self.highlights = highlight
+    @QtCore.pyqtSlot(str, int, bool)
+    def count(self, team_id, unread, highlight):
         self.unreads = unread
-        team = self.team()
-        if highlight == 0:
-            self.window.leftPane.stopAlert(team)
-        else:
-            self.window.leftPane.alert(team, highlight)
         if unread == 0:
+            self.window.leftPane.stopAlert(team_id)
             self.window.leftPane.stopUnread(self.id)
         else:
             self.window.leftPane.unread(self.id)
+            self.window.leftPane.alert(team_id, unread)
         self.window.count()
 
     @QtCore.pyqtSlot(str)
@@ -195,26 +174,16 @@ class Wrapper(QWebView):
         self.id = data['teams'][0]['id']
         self.name = data['teams'][0]['team_name']
         # Using team id to avoid invalid icon paths (Fixes #315)
-        icon_name = 'scudcloud_' + data['teams'][0]['id'] + '.png'
+        icon_name = 'hipscud_' + data['teams'][0]['id'] + '.png'
         icon_path = os.path.join(tempfile.gettempdir(), icon_name)
         # Download the file to use in notifications
         file_name, headers = request.urlretrieve(data['icon'], icon_path)
         self.icon = file_name
+        self.hipchatLoaded.emit()
 
     @QtCore.pyqtSlot(bool)
     def enableMenus(self, enabled):
         self.window.enableMenus(enabled)
-
-    @QtCore.pyqtSlot(bool)
-    def pasted(self, checked):
-        clipboard = QApplication.clipboard()
-        mime = clipboard.mimeData()
-        if mime.hasImage():
-            pixmap = clipboard.pixmap()
-            byteArray = QByteArray()
-            buffer = QBuffer(byteArray)
-            pixmap.save(buffer, "PNG")
-            self.call("setClipboard", str(byteArray.toBase64(), sys.stdout.encoding))
 
     @QtCore.pyqtSlot(str, str)
     def sendMessage(self, title, message):

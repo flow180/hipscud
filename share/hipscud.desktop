@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Terminal=false
+Type=Application
+Categories=Network;Chat;
+Name=HipScud
+Comment=HipScud is an open-source client for HipChat
+Keywords=hipchat;chat;instant-messaging;collaboration;
+Exec=hipscud
+StartupWMClass=hipscud
+Icon=/usr/share/pixmaps/hipscud.png

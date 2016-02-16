@@ -1,10 +1,11 @@
-from scudcloud.cookiejar import PersistentCookieJar
-from scudcloud.leftpane import LeftPane
-from scudcloud.notifier import Notifier
-from scudcloud.resources import Resources
-from scudcloud.systray import Systray
-from scudcloud.wrapper import Wrapper
-from scudcloud.speller import Speller
+from hipscud.cookiejar import PersistentCookieJar
+from hipscud.leftpane import LeftPane
+from hipscud.notifier import Notifier
+from hipscud.resources import Resources
+from hipscud.systray import Systray
+from hipscud.wrapper import Wrapper
+from hipscud.speller import Speller
+import json
 
 import sys, os, time
 
@@ -28,26 +29,27 @@ try:
 except ImportError:
     Unity = None
     Dbusmenu = None
-    from scudcloud.launcher import DummyLauncher
+    from hipscud.launcher import DummyLauncher
 
-class ScudCloud(QtGui.QMainWindow):
+class HipScud(QtGui.QMainWindow):
 
     forceClose = False
     messages = 0
     speller = Speller()
-    title = 'ScudCloud'
-
+    title = 'HipScud'
+    def populate_initial_teams(self):
+            self.teams(self.domains)
     def __init__(self, debug = False, parent = None, minimized = None, settings_path = ""):
-        super(ScudCloud, self).__init__(parent)
+        super(HipScud, self).__init__(parent)
         self.debug = debug
         self.minimized = minimized
         self.setWindowTitle(self.title)
         self.settings_path = settings_path
-        self.notifier = Notifier(Resources.APP_NAME, Resources.get_path('scudcloud.png'))
-        self.settings = QSettings(self.settings_path + '/scudcloud.cfg', QSettings.IniFormat)
+        self.notifier = Notifier(Resources.APP_NAME, Resources.get_path('hipscud.png'))
+        self.settings = QSettings(self.settings_path + '/hipscud.cfg', QSettings.IniFormat)
         self.identifier = self.settings.value("Domain")
         if Unity is not None:
-            self.launcher = Unity.LauncherEntry.get_for_desktop_id("scudcloud.desktop")
+            self.launcher = Unity.LauncherEntry.get_for_desktop_id("hipscud.desktop")
         else:
             self.launcher = DummyLauncher(self)
         self.webSettings()
@@ -64,18 +66,24 @@ class ScudCloud(QtGui.QMainWindow):
         self.startURL = Resources.SIGNIN_URL
         if self.identifier is not None:
             if isinstance(self.identifier, str):
-                self.domains = self.identifier.split(",")
+                self.domains = json.loads(self.identifier)
             else:
                 self.domains = self.identifier
-            self.startURL = self.normalize(self.domains[0])
+                self.leftPane.loadFinished.connect(self.populate_initial_teams)
         else:
             self.domains = []
-        self.addWrapper(self.startURL)
+        if self.domains:
+            def generate_next_function(i):
+                next_function = generate_next_function(i+1) if i < (len(self.domains) - 1) else None
+                return lambda: self.addWrapper(self.domains[i]['team_url'], next_function)
+            self.addWrapper(self.domains[0]['team_url'], generate_next_function(1) if len(self.domains) > 1 else None)
+        else:
+            self.addWrapper(self.startURL)
         self.addMenu()
         self.tray = Systray(self)
         self.systray(self.minimized)
         self.installEventFilter(self)
-        self.statusBar().showMessage('Loading Slack...')
+        self.statusBar().showMessage('Loading HipChat...')
         self.tickler = QTimer(self)
         self.tickler.setInterval(1800000)
         # Watch for ScreenLock events
@@ -109,10 +117,12 @@ class ScudCloud(QtGui.QMainWindow):
         for i in range(0, self.stackedWidget.count()):
             self.stackedWidget.widget(i).sendTickle()
 
-    def addWrapper(self, url):
+    def addWrapper(self, url, finished=None):
         webView = Wrapper(self)
         webView.page().networkAccessManager().setCookieJar(self.cookiesjar)
         webView.page().networkAccessManager().setCache(self.diskCache)
+        if finished:
+            webView.loadFinished.connect(finished)
         webView.load(QtCore.QUrl(url))
         webView.show()
         self.stackedWidget.addWidget(webView)
@@ -125,7 +135,7 @@ class ScudCloud(QtGui.QMainWindow):
         QWebSettings.globalSettings().setAttribute(QWebSettings.PluginsEnabled, False)
         # We don't need Java
         QWebSettings.globalSettings().setAttribute(QWebSettings.JavaEnabled, False)
-        # Enabling Local Storage (now required by Slack)
+        # Enabling Local Storage (now required)
         QWebSettings.globalSettings().setAttribute(QWebSettings.LocalStorageEnabled, True)
         # We need browsing history (required to not limit LocalStorage)
         QWebSettings.globalSettings().setAttribute(QWebSettings.PrivateBrowsingEnabled, False)
@@ -233,8 +243,7 @@ class ScudCloud(QtGui.QMainWindow):
                 "hidemenu":    self.createAction("Toggle Menubar", self.toggleMenuBar, QtCore.Qt.Key_F12)
             },
             "help": {
-                "help":       self.createAction("Help and Feedback", lambda : self.current().help(), QKeySequence.HelpContents),
-                "center":     self.createAction("Slack Help Center", lambda : self.current().helpCenter()),
+                "center":     self.createAction("HipChat Help", lambda : self.current().helpCenter()),
                 "about":      self.createAction("About", lambda : self.current().about())
              }
         }
@@ -268,7 +277,6 @@ class ScudCloud(QtGui.QMainWindow):
         if Unity is None:
             viewMenu.addAction(self.menus["view"]["hidemenu"])
         helpMenu = menu.addMenu("&Help")
-        helpMenu.addAction(self.menus["help"]["help"])
         helpMenu.addAction(self.menus["help"]["center"])
         helpMenu.addSeparator()
         helpMenu.addAction(self.menus["help"]["about"])
@@ -285,7 +293,6 @@ class ScudCloud(QtGui.QMainWindow):
         self.menus["file"]["preferences"].setEnabled(enabled == True)
         self.menus["file"]["addTeam"].setEnabled(enabled == True)
         self.menus["file"]["signout"].setEnabled(enabled == True)
-        self.menus["help"]["help"].setEnabled(enabled == True)
 
     def createAction(self, text, slot, shortcut=None, checkable=False):
         action = QtGui.QAction(text, self)
@@ -297,35 +304,28 @@ class ScudCloud(QtGui.QMainWindow):
             action.setCheckable(True)
         return action
 
-    def normalize(self, url):
-        if url.endswith(".slack.com"):
-            url+= "/"
-        elif not url.endswith(".slack.com/"):
-            url = "https://"+url+".slack.com/"
-        return url
-
     def current(self):
         return self.stackedWidget.currentWidget()
 
     def teams(self, teams):
-        if len(self.domains) == 0:
-            self.domains.append(teams[0]['team_url'])
-        team_list = [t['team_url'] for t in teams]
-        for t in teams:
-            for i in range(0, len(self.domains)):
-                self.domains[i] = self.normalize(self.domains[i])
-                # When team_icon is missing, the team already exists (Fixes #381, #391)
-                if 'team_icon' in t:
-                    if self.domains[i] in team_list:
-                        add = next(item for item in teams if item['team_url'] == self.domains[i])
-                        self.leftPane.addTeam(add['id'], add['team_name'], add['team_url'], add['team_icon']['image_44'], add == teams[0])
-                        # Adding new teams and saving loading positions
-                        if t['team_url'] not in self.domains:
-                            self.leftPane.addTeam(t['id'], t['team_name'], t['team_url'], t['team_icon']['image_44'], t == teams[0])
-                            self.domains.append(t['team_url'])
-                            self.settings.setValue("Domain", self.domains)
-        if len(teams) > 1:
-            self.leftPane.show()
+        team_list = [team['team_url'] for team in teams]
+        for team in teams:
+                           if team not in self.domains:
+                                matching_idx = None
+                                for idx, domain in enumerate(self.domains):
+                                   if domain['team_url'] == team['team_url']:
+                                      matching_idx = idx
+                                      break
+                                if matching_idx == None:
+                                    self.domains.append(team)
+                                else:
+                                    self.domains[matching_idx] = team
+
+                           if team['id'] not in self.leftPane._teams:
+                               self.leftPane.addTeam(team['id'], team['team_name'], team['team_url'], team['team_icon'], team == teams[0])
+
+        self.settings.setValue("Domain", self.domains)
+        self.leftPane.show()
 
     def switchTo(self, url):
         exists = False
@@ -338,7 +338,7 @@ class ScudCloud(QtGui.QMainWindow):
                 exists = True
                 break
         if not exists:
-            self.addWrapper(url)
+            pass#self.addWrapper(url)
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.ActivationChange and self.isActiveWindow():
@@ -361,9 +361,6 @@ class ScudCloud(QtGui.QMainWindow):
             # Ctrl + BackTab
             if (modifiers & QtCore.Qt.ControlModifier) and (modifiers & QtCore.Qt.ShiftModifier):
                 if event.key() == QtCore.Qt.Key_Backtab: self.leftPane.clickNext(-1)
-            # Ctrl + Shift + <key>
-            if (modifiers & QtCore.Qt.ShiftModifier) and (modifiers & QtCore.Qt.ShiftModifier):
-                if event.key() == QtCore.Qt.Key_V: self.current().createSnippet()
         return QtGui.QMainWindow.eventFilter(self, obj, event);
 
     def focusInEvent(self, event):
@@ -407,8 +404,8 @@ class ScudCloud(QtGui.QMainWindow):
                 for c in channels:
                     if c['is_member']:
                         item = Dbusmenu.Menuitem.new ()
-                        item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, "#"+c['name'])
-                        item.property_set ("id", c['name'])
+                        item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, c['name'])
+                        item.property_set ("id", c['id'])
                         item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
                         item.connect(Dbusmenu.MENUITEM_SIGNAL_ITEM_ACTIVATED, self.current().openChannel)
                         ql.child_append(item)

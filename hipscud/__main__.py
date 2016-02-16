@@ -12,9 +12,9 @@ import os, sys
 #print("Appending path: \"%s\"" % INSTALL_DIR)
 #sys.path.append(INSTALL_DIR)
 
-from scudcloud.resources import Resources
-import scudcloud.scudcloud as sca
-from scudcloud.version import __version__
+from hipscud.resources import Resources
+import hipscud.hipscud as sca
+from hipscud.version import __version__
 
 import fcntl, platform, signal, tempfile
 from sip import SIP_VERSION_STR
@@ -23,14 +23,14 @@ from PyQt4.Qt import PYQT_VERSION_STR
 from PyQt4.QtCore import QT_VERSION_STR
 from PyQt4.QtNetwork import QLocalServer, QLocalSocket
 
-# The ScudCloud QMainWindow
+# The hipscud QMainWindow
 win = None
 
 def main():
     global win
     signal.signal(signal.SIGINT, exit)
     args = parse_arguments()
-    appKey = "scudcloud.pid"
+    appKey = "hipscud.pid"
     socket = QLocalSocket()
     socket.connectToServer(appKey)
     if socket.isOpen():
@@ -40,7 +40,7 @@ def main():
     socket.deleteLater()
     app = QtGui.QApplication(sys.argv)
     app.setApplicationName(Resources.APP_NAME)
-    app.setWindowIcon(QtGui.QIcon(Resources.get_path('scudcloud.png')))
+    app.setWindowIcon(QtGui.QIcon(Resources.get_path('hipscud.png')))
 
     try:
         settings_path = load_settings(args.confdir)
@@ -50,7 +50,7 @@ def main():
         raise SystemExit()
     minimized = True if args.minimized is True else None
 
-    win = sca.ScudCloud(debug=args.debug, minimized=minimized, settings_path=settings_path)
+    win = sca.HipScud(debug=args.debug, minimized=minimized, settings_path=settings_path)
     app.commitDataRequest.connect(win.setForceClose, type=QtCore.Qt.DirectConnection)
 
     server = QLocalServer()
@@ -80,9 +80,9 @@ def parse_arguments():
     from argparse import ArgumentParser
     from os.path import expanduser
     if 'XDG_CONFIG_HOME' in os.environ and os.environ['XDG_CONFIG_HOME']:
-        default_confdir = os.environ['XDG_CONFIG_HOME'] + '/scudcloud'
+        default_confdir = os.environ['XDG_CONFIG_HOME'] + '/hipscud'
     else:
-        default_confdir = '~/.config/scudcloud'
+        default_confdir = '~/.config/hipscud'
     parser = ArgumentParser()
     parser.add_argument('--confdir',    dest='confdir',      metavar='dir', default=default_confdir, help="change the configuration directory")
     parser.add_argument('--debug',      dest='debug',        type=bool,     default=False,           help="enable webkit debug console (default: False)")
@@ -96,7 +96,7 @@ def parse_arguments():
     return args
 
 def versions():
-    print("ScudCloud", __version__)
+    print("hipscud", __version__)
     print("Python", platform.python_version())
     print("Qt", QT_VERSION_STR)
     print("PyQt", PYQT_VERSION_STR)

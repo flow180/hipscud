@@ -12,7 +12,7 @@ class PersistentCookieJar(QtNetwork.QNetworkCookieJar):
         listCookies = self.allCookies()
         data = QtCore.QByteArray()
         for cookie in  listCookies:
-            if not cookie.isSessionCookie():
+            #if not cookie.isSessionCookie():
                 data.append(cookie.toRawForm()+ "\n")
         self.mainWindow.settings.setValue("Cookies",data)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from setuptools import setup
-from scudcloud.version import __version__
+from hipscud.version import __version__
 import glob
 import os
 
@@ -11,29 +11,29 @@ def _data_files():
         files = glob.glob(os.path.join('share', 'icons', theme, '*.svg'))
         yield directory, files
 
-    yield os.path.join('share', 'doc', 'scudcloud'), \
+    yield os.path.join('share', 'doc', 'hipscud'), \
         ['LICENSE', 'README']
     yield os.path.join('share', 'applications'), \
         glob.glob(os.path.join('share', '*.desktop'))
     yield os.path.join('share', 'pixmaps'), \
-        glob.glob(os.path.join('scudcloud', 'resources', 'scudcloud.png'))
+        glob.glob(os.path.join('hipscud', 'resources', 'hipscud.png'))
 
 
-setup(name='scudcloud',
-      author='Rael Gugelmin Cunha',
-      author_email='rael.gc@gmail.com',
+setup(name='hipscud',
+      author='Charlie Wolf',
+      author_email='charlie@flow180.com',
       data_files=list(_data_files()),
-      description='ScudCloud is a non official desktop client for Slack',
+      description='HipScud is a non official desktop client for hipchat',
       entry_points = {
-          'gui_scripts': ['scudcloud = scudcloud.__main__:main'],
+          'gui_scripts': ['hipscud = hipscud.__main__:main'],
       },
-      keywords = "slack chat im instant_message",
+      keywords = "hipchat chat im instant_message",
       license = "MIT",
       maintainer='Andrew Stiegmann',
       maintainer_email='andrew.stiegmann@gmail.com',
-      package_data={'scudcloud': ['resources/*',]},
-      packages=['scudcloud',],
+      package_data={'hipscud': ['resources/*',]},
+      packages=['hipscud',],
       requires=['dbus', 'PyQt4',],
-      url='https://github.com/raelgc/scudcloud',
+      url='https://github.com/flow180/hipscud',
       version = __version__,
 )

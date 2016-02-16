@@ -1,11 +1,11 @@
-from scudcloud.resources import Resources
+from hipscud.resources import Resources
 
 from PyQt4 import QtCore
 from PyQt4.QtCore import QUrl
 from PyQt4.QtWebKit import QWebView, QWebSettings
 
 class LeftPane(QWebView):
-
+    _teams = []
     def __init__(self, window):
         QWebView.__init__(self)
         self.window = window
@@ -19,6 +19,7 @@ class LeftPane(QWebView):
         self.setFixedWidth(0)
         self.setVisible(False)
         self.setUrl(QUrl.fromLocalFile(Resources.get_path("leftpane.html")))
+        self._teams=[]
         self.page().currentFrame().addToJavaScriptWindowObject("leftPane", self)
         self.page().currentFrame().evaluateJavaScript(self.js)
 
@@ -36,6 +37,7 @@ class LeftPane(QWebView):
         else:
             checked = "false"
         self.page().currentFrame().evaluateJavaScript('LeftPane.addTeam("{}","{}","{}","{}","{}");'.format(id, name, url, icon, checked))
+        self._teams.append(id)
 
     def click(self, i):
         self.page().currentFrame().evaluateJavaScript('LeftPane.click({});'.format(i))
