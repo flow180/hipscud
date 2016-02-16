@@ -5,7 +5,6 @@ if (typeof HC !== 'undefined') {
         reload: window.location.reload.bind(window.location),
         didFinishLoading: function() {
             HipScud.populate();
-            console.log('enabling menus');
             desktop.enableMenus(true);
             HipScud.unloaded = false;
         },
