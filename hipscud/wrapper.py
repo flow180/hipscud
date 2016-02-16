@@ -119,6 +119,8 @@ class Wrapper(QWebView):
         self.page().currentFrame().addToJavaScriptWindowObject("desktop", self)
         # Loading ScudCloud JS client
         self.page().currentFrame().evaluateJavaScript(self.js)
+        if Resources.SIGNIN_URL == self._urlToString(self.url()):
+            self.page().currentFrame().evaluateJavaScript('addSelfHostedOption();')
         self.window.statusBar().hide()
 
     def systemOpen(self, url):

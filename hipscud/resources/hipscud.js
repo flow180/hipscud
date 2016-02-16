@@ -59,8 +59,12 @@ if (typeof HC !== 'undefined') {
         open: function(c) {
             return HC.Actions.RoomNavActions.select(c, 'groupchat');
         },
-        preferences: function(){ HC.Actions.DialogActions.showSettingDialog() },
-        logout: function(){ HC.Actions.AppActions.signout() }
+        preferences: function() {
+            HC.Actions.DialogActions.showSettingDialog()
+        },
+        logout: function() {
+            HC.Actions.AppActions.signout()
+        }
     };
 
     /* Mock Notification because QWebkit doesn't have it */
@@ -73,4 +77,15 @@ if (typeof HC !== 'undefined') {
         HC.AppDispatcher.register('app-state-ready', HipScud.didFinishLoading);
         HC.Actions.AppActions.notifier.updateTotalUnreadCount = HipScud.setBadgeCount;
     }
+}
+
+function addSelfHostedOption() {
+    if (!$('.sign-up-instead').length) return;
+    var useServerLink = $('<a href="javascript:;">Using Hipchat Server?</a>');
+    $(useServerLink).click(function() {
+        var url = prompt('Enter the domain name of your Hipchat Server');
+        window.location.replace('https://' + url + '/sign_in');
+    });
+    jQuery('.sign-up-instead').html('');
+    jQuery('.sign-up-instead').append(useServerLink);
 }
