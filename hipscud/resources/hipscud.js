@@ -1,3 +1,4 @@
+console.log("Beginning HipScud custom code");
 if (typeof HC !== 'undefined') {
     HipScud = {
         default_icon: 'https://hipchat-magnolia-cdn.atlassian.com/assets/img/hipchat/bookmark-icons/apple-touch-icon-57x57.png',
@@ -38,7 +39,7 @@ if (typeof HC !== 'undefined') {
             return Object.keys(allRooms).map(function(id) {
                 return {
                     id: id,
-                    name: activeChats[id].name,
+                    name: allRooms[id].name,
                     is_member: Object.keys(activeChats).indexOf(id) != -1
                 };
             });
@@ -71,11 +72,13 @@ if (typeof HC !== 'undefined') {
         desktop.sendMessage(title, options.body);
     }
     window.Notification.permission = 'granted';
+    console.log('Initializing Events');
 
-    if (HipScud.unloaded) {
-        HC.AppDispatcher.register('app-state-ready', HipScud.didFinishLoading);
-        HC.Actions.AppActions.notifier.updateTotalUnreadCount = HipScud.setBadgeCount;
-    }
+    HC.AppDispatcher.register('app-state-ready', HipScud.didFinishLoading);
+    HC.Actions.AppActions.notifier.updateTotalUnreadCount = HipScud.setBadgeCount;
+
+} else {
+    console.log('HC is undefined');
 }
 
 function addSelfHostedOption() {
